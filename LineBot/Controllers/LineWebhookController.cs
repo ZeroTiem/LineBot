@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -8,13 +9,15 @@ using System.Text;
 using System.Web;
 using System.Web.Http;
 using System.Xml;
+using LineBot.Models;
 using Newtonsoft.Json;
 
 namespace LineBot.Controllers
 {
     public class LineWebhookController : ApiController
     {
-        const string ChannelAccessToken = "";
+        public string ChannelAccessToken = ConfigurationManager.AppSettings["token"];
+        private readonly ILineBotContext _db = new LineBotContext();
 
         public IHttpActionResult Get(string token)
         {
@@ -30,27 +33,145 @@ namespace LineBot.Controllers
             string jsonContent = requestContent.ReadAsStringAsync().Result;
             var webhookEvent = JsonConvert.DeserializeObject<WebhookEvent>(jsonContent);
             var data = webhookEvent.Events.FirstOrDefault();
+            var inputText = data.Message.Text;
+            var userID = data.Source.UserId;
+            var isSuc = true;
+            Card card = default(Card);
 
-            if (data.Postback != null)// Is Postback
+            var cat = _db.Categories.FirstOrDefault(x => x.Title == inputText);
+            if (cat != null)
             {
-                SendPushMessage("PostBackData:" + data.Postback.Data, data.Source.UserId);
-            }
-            if (data.Message.Text == "旋轉")
-            {
-                SendPushMessage(data.Message.Text, data.Source.UserId);
-            }
-            else if (data.Message.Text == "卡片")
-            {
-                SendPushMessage(data.Message.Text, data.Source.UserId);
-            }
-            else if (data.Message.Text == "f")
-            {
-                SendReplyCardMessage(data.ReplyToken);
+                var contentData = (from m in _db.CatContentMappings.Where(x => x.CategoryId == cat.Id)
+                               join c in _db.Contents
+                               on m.ContentId equals c.Id
+                               orderby c.HotLevel descending
+                               select new{
+                                   Content = c,
+                                   MappingID = m.Id
+                               })
+                              .FirstOrDefault();
+                if(contentData != null)
+                {
+                    var msgLog = new MessageLog
+                    {
+                        UserId = userID,
+                        MappingId = contentData.MappingID,
+                        KeyWord = inputText
+                    };
+                    _db.MessageLogs.Add(msgLog);
+                    _db.SaveChanges();
+
+                    var content = contentData.Content;
+                    card = new Card()
+                    {
+                        Type = "buttons",
+                        ThumbnailImageUrl = content.ImageUrl,
+                        ImageAspectRatio = "rectangle",
+                        ImageSize = "cover",
+                        ImageBackgroundColor = "#FFFFFF",
+                        Title = content.Title,
+                        Text = content.Message,
+                        Actions = new List<ButtonAction>
+                            {
+                                new ButtonAction
+                                {
+                                    Type = "uri",
+                                    Label = "前往",
+                                    Uri = content.Url
+                                },
+                                new ButtonAction
+                                {
+                                    Type = "text",
+                                    Label = "下一則",
+                                    Data = "next"
+                                }
+                            }
+                    };
+                    Card(userID, card);
+                }
+                else
+                {
+                    isSuc = false;
+                }
             }
             else
             {
-                SendReplyMessage(data.Message.Text, data.ReplyToken);
+                var content = _db.Contents
+                    .Where(x => x.Title == inputText
+                                || x.ContentKeyword.Contains(inputText))
+                    .OrderByDescending(x => x.HotLevel)
+                    .FirstOrDefault();
+
+                if(content != null)
+                {
+                    var msgLog = new MessageLog
+                    {
+                        UserId = userID,
+                        ContentId = content.Id,
+                        KeyWord = inputText
+                    };
+                    _db.MessageLogs.Add(msgLog);
+                    _db.SaveChanges();
+
+                    card = new Card()
+                    {
+                        Type = "buttons",
+                        ThumbnailImageUrl = content.ImageUrl,
+                        ImageAspectRatio = "rectangle",
+                        ImageSize = "cover",
+                        ImageBackgroundColor = "#FFFFFF",
+                        Title = content.Title,
+                        Text = content.Message,
+                        Actions = new List<ButtonAction>
+                            {
+                                new ButtonAction
+                                {
+                                    Type = "uri",
+                                    Label = "前往",
+                                    Uri = content.Url
+                                },
+                                new ButtonAction
+                                {
+                                    Type = "text",
+                                    Label = "下一則",
+                                    Data = "next"
+                                }
+                            }
+                    };
+                    Card(userID, card);
+                }
+                else
+                {
+                    isSuc = false;
+                }
+                
             }
+
+            if(isSuc == false)
+            {
+
+            }
+
+            //if (data.Postback != null)// Is Postback
+            //{
+            //    SendPushMessage("PostBackData:" + data.Postback.Data, data.Source.UserId);
+            //}
+            //if (data.Message.Text == "旋轉")
+            //{
+            //    SendPushMessage(data.Message.Text, data.Source.UserId);
+            //}
+            //else if (data.Message.Text == "卡片")
+            //{
+            //    SendPushMessage(data.Message.Text, data.Source.UserId);
+            //}
+            //else if (data.Message.Text == "f")
+            //{
+            //    SendReplyCardMessage(data.ReplyToken);
+            //}
+            //else
+            //{
+            //    SendReplyMessage(data.Message.Text, data.ReplyToken);
+            //}
             return Ok();
         }
 
@@ -151,7 +272,7 @@ namespace LineBot.Controllers
             switch (text)
             {
                 case "卡片":
-                    request = Card(to);
+                    //request = Card(to);
                     break;
                 case "旋轉":
                     request = Carousel(to);
@@ -197,7 +318,7 @@ namespace LineBot.Controllers
             return request;
         }
 
-        private object Card(string to)
+        private object Card(string to, Card card)
         {
             var request = new RequestSendPushMessage<RequestTemplate<Card>>()
             {
@@ -208,31 +329,7 @@ namespace LineBot.Controllers
                     {
                         Type = "template",
                         AltText = "This is a buttons template",
-                        Template = new Card
-                        {
-                            Type = "buttons",
-                            ThumbnailImageUrl = "https://example.com/bot/images/image.jpg",
-                            ImageAspectRatio = "rectangle",
-                            ImageSize = "cover",
-                            ImageBackgroundColor = "#FFFFFF",
-                            Title = "Menu",
-                            Text = "Please select",
-                            Actions = new List<ButtonAction>
-                            {
-                                new ButtonAction
-                                {
-                                    Type = "uri",
-                                    Label = "label",
-                                    Uri = "http://example.com/page/123"
-                                },
-                                new ButtonAction
-                                {
-                                    Type = "postback",
-                                    Label = "postBack",
-                                    Data = "action=add&itemid=123"
-                                }
-                            }
-                        }
+                        Template = card
                     }
                 }
 
@@ -330,7 +427,7 @@ namespace LineBot.Controllers
         }
 
 
-                        
+
 
     }
 
@@ -460,9 +557,9 @@ namespace LineBot.Controllers
 
     //public class ButtonsTemplate<T>
     //{
-       
+
     //}
-    
+
 
     public class Card : CardBasis
     {
@@ -502,7 +599,7 @@ namespace LineBot.Controllers
         public List<ButtonAction> Actions { get; set; }
     }
 
-   
+
 
     //public class CardTemplate : Card
     //{
