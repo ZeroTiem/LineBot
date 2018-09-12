@@ -85,7 +85,7 @@ namespace LineBot.Controllers
                 var max = _db.Contents.Count() - 1;
                 var num = (new Random()).Next(0, max);
 
-                var content = _db.Contents.Skip(num).FirstOrDefault();
+                var content = _db.Contents.OrderBy(x => x.HotLevel).Skip(num).FirstOrDefault();
                 card = new Card()
                 {
                     Type = "buttons",
@@ -105,9 +105,9 @@ namespace LineBot.Controllers
                                 },
                                 new ButtonAction
                                 {
-                                    Type = "text",
+                                    Type = "message",
                                     Label = "下一則",
-                                    Data = "next"
+                                    Text = "下一則"
                                 }
                             }
                 };

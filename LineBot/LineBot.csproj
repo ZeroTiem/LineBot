@@ -189,6 +189,8 @@
     </Content>
     <Content Include="Models\EF.Reverse.POCO.Core.ttinclude" />
     <Content Include="Models\EF.Reverse.POCO.ttinclude" />
+    <None Include="Properties\PublishProfiles\linechattingbot - FTP.pubxml" />
+    <None Include="Properties\PublishProfiles\linechattingbot - Web Deploy.pubxml" />
     <None Include="Scripts\jquery-1.10.2.intellisense.js" />
     <Content Include="Scripts\jquery-1.10.2.js" />
     <Content Include="Scripts\jquery-1.10.2.min.js" />
