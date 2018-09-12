@@ -44,11 +44,11 @@ namespace LineBot.Controllers
             if(inputText == "熱門話題")
             {
                 var contents = _db.Contents
-                    .Where(x => x.HotLevel > 3000)
+                    .Where(x => x.HotLevel > 1000)
                     .OrderByDescending(x => x.HotLevel)
                     .ToList();
 
-                var num = (new Random()).Next(0, 10);
+                var num = (new Random()).Next(0, contents.Count);
                 var content = contents.Skip(num).FirstOrDefault();
 
                 card = new Card()
@@ -70,9 +70,9 @@ namespace LineBot.Controllers
                                 },
                                 new ButtonAction
                                 {
-                                    Type = "text",
+                                    Type = "message",
                                     Label = "下一則",
-                                    Data = "next"
+                                    Text = "下一則"
                                 }
                             }
                 };
@@ -136,9 +136,9 @@ namespace LineBot.Controllers
                                 },
                                 new ButtonAction
                                 {
-                                    Type = "text",
+                                    Type = "message",
                                     Label = "下一則",
-                                    Data = "next"
+                                    Text = "下一則"
                                 }
                             }
                     };
@@ -173,7 +173,7 @@ namespace LineBot.Controllers
                                 },
                                 new ButtonAction
                                 {
-                                    Type = "text",
+                                    Type = "message",
                                     Label = "下一則",
                                     Text = "下一則"
                                 }
