@@ -80,7 +80,40 @@ namespace LineBot.Controllers
                 return Ok();
             }
 
-            if(inputText == "")
+            if(inputText == "隨機時事")
+            {
+                var max = _db.Contents.Count() - 1;
+                var num = (new Random()).Next(0, max);
+
+                var content = _db.Contents.Skip(num).FirstOrDefault();
+                card = new Card()
+                {
+                    Type = "buttons",
+                    ThumbnailImageUrl = content.ImageUrl,
+                    ImageAspectRatio = "rectangle",
+                    ImageSize = "cover",
+                    ImageBackgroundColor = "#FFFFFF",
+                    Title = content.Title,
+                    Text = content.Message.Substring(0, 60),
+                    Actions = new List<ButtonAction>
+                            {
+                                new ButtonAction
+                                {
+                                    Type = "uri",
+                                    Label = "前往",
+                                    Uri = content.Url
+                                },
+                                new ButtonAction
+                                {
+                                    Type = "text",
+                                    Label = "下一則",
+                                    Data = "next"
+                                }
+                            }
+                };
+                SendPushMessage(Card(userID, card));
+                return Ok();
+            }
 
             if (inputText == "下一則")
             {
