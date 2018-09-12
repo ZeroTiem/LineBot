@@ -43,13 +43,99 @@ namespace LineBot.Controllers
 
             if (inputText == "下一則")
             {
-                //var aa = _db.Categories
-                //_db.MessageLogs.
-            }
-            else
-            {
+                var msgLog = _db.MessageLogs
+                    .Where(x => x.UserId == userID)
+                    .OrderByDescending(x => x.SendDatetime)
+                    .FirstOrDefault();
 
-                if (cat != null)
+                var contentID = msgLog.MappingId == null
+                    ? msgLog.ContentId
+                    : _db.CatContentMappings.FirstOrDefault(x => x.Id == msgLog.MappingId).ContentId;
+
+                var preContnet = _db.Contents.FirstOrDefault(x => x.Id == contentID);
+                var nextContent = _db.Contents
+                    .Where(x => x.HotLevel < preContnet.HotLevel)
+                    .OrderByDescending(x => x.HotLevel)
+                    .FirstOrDefault();
+
+                if (msgLog.MappingId == null)
+                {
+                    var nextMsgLog = new MessageLog()
+                    {
+                        UserId = userID,
+                        ContentId = nextContent.Id,
+                        KeyWord = msgLog.KeyWord
+                    };
+                    _db.MessageLogs.Add(nextMsgLog);
+                    _db.SaveChanges();
+
+                    card = new Card()
+                    {
+                        Type = "buttons",
+                        ThumbnailImageUrl = nextContent.ImageUrl,
+                        ImageAspectRatio = "rectangle",
+                        ImageSize = "cover",
+                        ImageBackgroundColor = "#FFFFFF",
+                        Title = nextContent.Title,
+                        Text = nextContent.Message,
+                        Actions = new List<ButtonAction>
+                            {
+                                new ButtonAction
+                                {
+                                    Type = "uri",
+                                    Label = "前往",
+                                    Uri = nextContent.Url
+                                },
+                                new ButtonAction
+                                {
+                                    Type = "text",
+                                    Label = "下一則",
+                                    Data = "next"
+                                }
+                            }
+                    };
+                }
+                else
+                {
+                    var nextMsgLog = new MessageLog()
+                    {
+                        UserId = userID,
+                        MappingId = nextContent.Id,
+                        KeyWord = msgLog.KeyWord
+                    };
+                    _db.MessageLogs.Add(nextMsgLog);
+                    _db.SaveChanges();
+
+                    card = new Card()
+                    {
+                        Type = "buttons",
+                        ThumbnailImageUrl = nextContent.ImageUrl,
+                        ImageAspectRatio = "rectangle",
+                        ImageSize = "cover",
+                        ImageBackgroundColor = "#FFFFFF",
+                        Title = nextContent.Title,
+                        Text = nextContent.Message.Substring(0,59),
+                        Actions = new List<ButtonAction>
+                            {
+                                new ButtonAction
+                                {
+                                    Type = "uri",
+                                    Label = "前往",
+                                    Uri = nextContent.Url
+                                },
+                                new ButtonAction
+                                {
+                                    Type = "text",
+                                    Label = "下一則",
+                                    Text = "下一則"
+                                }
+                            }
+                    };
+                }
+                SendPushMessage(Card(userID, card));
+            }
+
+            if (cat != null)
                 {
                     var contentData = (from m in _db.CatContentMappings.Where(x => x.CategoryId == cat.Id)
                                        join c in _db.Contents
@@ -81,7 +167,7 @@ namespace LineBot.Controllers
                             ImageSize = "cover",
                             ImageBackgroundColor = "#FFFFFF",
                             Title = content.Title,
-                            Text = content.Message,
+                            Text = content.Message.Substring(0, 59),
                             Actions = new List<ButtonAction>
                             {
                                 new ButtonAction
@@ -92,9 +178,9 @@ namespace LineBot.Controllers
                                 },
                                 new ButtonAction
                                 {
-                                    Type = "text",
+                                    Type = "message",
                                     Label = "下一則",
-                                    Data = "next"
+                                    Text = "下一則"
                                 }
                             }
                         };
@@ -132,7 +218,7 @@ namespace LineBot.Controllers
                             ImageSize = "cover",
                             ImageBackgroundColor = "#FFFFFF",
                             Title = content.Title,
-                            Text = content.Message,
+                            Text = content.Message.Substring(0, 59),
                             Actions = new List<ButtonAction>
                             {
                                 new ButtonAction
@@ -143,9 +229,9 @@ namespace LineBot.Controllers
                                 },
                                 new ButtonAction
                                 {
-                                    Type = "text",
+                                    Type = "message",
                                     Label = "下一則",
-                                    Data = "next"
+                                    Text = "下一則"
                                 }
                             }
                         };
@@ -163,72 +249,8 @@ namespace LineBot.Controllers
                     //todo
                     SendPushMessage(GetFlexMenu(userID));
                 }
-            }
             return Ok();
         }
-
-        private void SendReplyCardMessage(string token)
-        {
-            var request = new RequestReplyCardMessage
-            {
-                ReplyToken = token,
-                Messages = new List<RequestTemplate<Card>>
-                {
-                    new RequestTemplate<Card>
-                    {
-                        Type = "template",
-                        AltText = "This is a buttons template",
-                        Template = new Card
-                        {
-                            Type = "buttons",
-                            ThumbnailImageUrl = "https://example.com/bot/images/image.jpg",
-                            ImageAspectRatio = "rectangle",
-                            ImageSize = "cover",
-                            ImageBackgroundColor = "#FFFFFF",
-                            Title = "Menu",
-                            Text = "Please select",
-                            Actions = new List<ButtonAction>
-                            {
-                                new ButtonAction
-                                {
-                                    Type = "uri",
-                                    Label = "label",
-                                    Uri = "http://example.com/page/123"
-                                },
-                                new ButtonAction
-                                {
-                                    Type = "postback",
-                                    Label = "postBack",
-                                    Data = "action=add&itemid=123"
-                                }
-                            }
-                        }
-                    }
-                }
-
-            };
-            //HttpClient Post
-            var client = new HttpClient();
-            // Request head
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", ChannelAccessToken);
-            var uri = "https://api.line.me/v2/bot/message/reply";
-            HttpResponseMessage httpResponseMessage;
-            // Request body
-            byte[] byteData = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(request));
-
-            //var response = new WebApiMemberRegisterRespone();
-
-            using (var content = new ByteArrayContent(byteData))
-            {
-                content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-                httpResponseMessage = client.PostAsync(uri, content).Result;
-                string result = httpResponseMessage.Content.ReadAsStringAsync().Result;
-                //response = JsonConvert.DeserializeObject<WebApiMemberRegisterRespone>(result);
-            }
-        }
-
-
-
 
         private object Text(string to, string text)
         {
@@ -354,7 +376,7 @@ namespace LineBot.Controllers
 
         private object GetFlexMenu(string to)
         {
-            return new 
+            return new RequestSendPushMessage<dynamic>
             {
                 To = to,
                 Messages = new List<dynamic>
@@ -392,13 +414,25 @@ namespace LineBot.Controllers
                                                                     action = new
                                                                     {
                                                                         type = "message",
-                                                                        label = "多冰",
-                                                                        text = "多冰"
+                                                                        label = "熱門話題",
+                                                                        text = "熱門話題"
                                                                     }
                                                                 },
+                                                                new
+                                                                {
+                                                                    type = "button",
+                                                                    style = "primary",
+                                                                    action = new
+                                                                    {
+                                                                        type = "message",
+                                                                        label = "隨機時事",
+                                                                        text = "隨機時事"
+                                                                    }
+                                                                }
                                                             }
-                                                        },
-                                                         new
+                                                        }
+                                                        ,
+                                                        new
                                                         {
                                                             type = "box",
                                                             layout = "horizontal",
@@ -412,8 +446,83 @@ namespace LineBot.Controllers
                                                                     action = new
                                                                     {
                                                                         type = "message",
-                                                                        label = "去冰",
-                                                                        text = "去冰"
+                                                                        label = "運動",
+                                                                        text = "運動"
+                                                                    },
+                                                                },
+                                                                new
+                                                                {
+                                                                type = "button",
+                                                                style = "primary",
+                                                                action = new
+                                                                {
+                                                                    type = "message",
+                                                                    label = "美食",
+                                                                    text = "美食"
+                                                                }
+                                                            }
+                                                            }
+                                                        }
+                                                        ,
+                                                        new
+                                                        {
+                                                            type = "box",
+                                                            layout = "horizontal",
+                                                            spacing = "sm",
+                                                            contents = new List<dynamic>
+                                                            {
+                                                                new
+                                                                {
+                                                                    type = "button",
+                                                                    style = "primary",
+                                                                    action = new
+                                                                    {
+                                                                        type = "message",
+                                                                        label = "旅遊",
+                                                                        text = "旅遊"
+                                                                    }
+                                                                },
+                                                                new
+                                                                {
+                                                                    type = "button",
+                                                                    style = "primary",
+                                                                    action = new
+                                                                    {
+                                                                        type = "message",
+                                                                        label = "男女",
+                                                                        text = "男女"
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                        ,
+                                                        new
+                                                        {
+                                                            type = "box",
+                                                            layout = "horizontal",
+                                                            spacing = "sm",
+                                                            contents = new List<dynamic>
+                                                            {
+                                                                new
+                                                                {
+                                                                    type = "button",
+                                                                    style = "primary",
+                                                                    action = new
+                                                                    {
+                                                                        type = "message",
+                                                                        label = "電影",
+                                                                        text = "電影"
+                                                                    }
+                                                                },
+                                                                new
+                                                                {
+                                                                    type = "button",
+                                                                    style = "primary",
+                                                                    action = new
+                                                                    {
+                                                                        type = "message",
+                                                                        label = "娛樂",
+                                                                        text = "娛樂"
                                                                     }
                                                                 }
                                                             }
@@ -426,7 +535,7 @@ namespace LineBot.Controllers
                             }
                         }
 
-        };
+            };
         }
 
         private void SendPushMessage(object request)
@@ -645,5 +754,7 @@ namespace LineBot.Controllers
         public string Data { get; set; }
         [JsonProperty(PropertyName = "uri")]
         public string Uri { get; set; }
+        [JsonProperty(PropertyName = "text")]
+        public string Text { get; set; }
     }
 }
