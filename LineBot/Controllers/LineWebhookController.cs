@@ -38,91 +38,51 @@ namespace LineBot.Controllers
             var isSuc = true;
             Card card = default(Card);
 
-            var cat = _db.Categories.FirstOrDefault(x => x.Title == inputText);
-            if (cat != null)
-            {
-                var contentData = (from m in _db.CatContentMappings.Where(x => x.CategoryId == cat.Id)
-                               join c in _db.Contents
-                               on m.ContentId equals c.Id
-                               orderby c.HotLevel descending
-                               select new{
-                                   Content = c,
-                                   MappingID = m.Id
-                               })
-                              .FirstOrDefault();
-                if(contentData != null)
-                {
-                    var msgLog = new MessageLog
-                    {
-                        UserId = userID,
-                        MappingId = contentData.MappingID,
-                        KeyWord = inputText
-                    };
-                    _db.MessageLogs.Add(msgLog);
-                    _db.SaveChanges();
 
-                    var content = contentData.Content;
-                    card = new Card()
-                    {
-                        Type = "buttons",
-                        ThumbnailImageUrl = content.ImageUrl,
-                        ImageAspectRatio = "rectangle",
-                        ImageSize = "cover",
-                        ImageBackgroundColor = "#FFFFFF",
-                        Title = content.Title,
-                        Text = content.Message,
-                        Actions = new List<ButtonAction>
-                            {
-                                new ButtonAction
-                                {
-                                    Type = "uri",
-                                    Label = "前往",
-                                    Uri = content.Url
-                                },
-                                new ButtonAction
-                                {
-                                    Type = "text",
-                                    Label = "下一則",
-                                    Data = "next"
-                                }
-                            }
-                    };
-                    Card(userID, card);
-                }
-                else
-                {
-                    isSuc = false;
-                }
+            var cat = _db.Categories.FirstOrDefault(x => x.Title == inputText);
+
+            if (inputText == "下一則")
+            {
+                //var aa = _db.Categories
+                //_db.MessageLogs.
             }
             else
             {
-                var content = _db.Contents
-                    .Where(x => x.Title == inputText
-                                || x.ContentKeyword.Contains(inputText))
-                    .OrderByDescending(x => x.HotLevel)
-                    .FirstOrDefault();
 
-                if(content != null)
+                if (cat != null)
                 {
-                    var msgLog = new MessageLog
+                    var contentData = (from m in _db.CatContentMappings.Where(x => x.CategoryId == cat.Id)
+                                       join c in _db.Contents
+                                       on m.ContentId equals c.Id
+                                       orderby c.HotLevel descending
+                                       select new
+                                       {
+                                           Content = c,
+                                           MappingID = m.Id
+                                       })
+                                  .FirstOrDefault();
+                    if (contentData != null)
                     {
-                        UserId = userID,
-                        ContentId = content.Id,
-                        KeyWord = inputText
-                    };
-                    _db.MessageLogs.Add(msgLog);
-                    _db.SaveChanges();
+                        var msgLog = new MessageLog
+                        {
+                            UserId = userID,
+                            MappingId = contentData.MappingID,
+                            KeyWord = inputText
+                        };
+                        _db.MessageLogs.Add(msgLog);
+                        _db.SaveChanges();
 
-                    card = new Card()
-                    {
-                        Type = "buttons",
-                        ThumbnailImageUrl = content.ImageUrl,
-                        ImageAspectRatio = "rectangle",
-                        ImageSize = "cover",
-                        ImageBackgroundColor = "#FFFFFF",
-                        Title = content.Title,
-                        Text = content.Message,
-                        Actions = new List<ButtonAction>
+                        var content = contentData.Content;
+                        card = new Card()
+                        {
+                            Type = "buttons",
+                            ThumbnailImageUrl = content.ImageUrl,
+                            ImageAspectRatio = "rectangle",
+                            ImageSize = "cover",
+                            ImageBackgroundColor = "#FFFFFF",
+                            Title = content.Title,
+                            Text = content.Message,
+                            Actions = new List<ButtonAction>
                             {
                                 new ButtonAction
                                 {
@@ -137,73 +97,74 @@ namespace LineBot.Controllers
                                     Data = "next"
                                 }
                             }
-                    };
-                    Card(userID, card);
+                        };
+                        SendPushMessage(Card(userID, card));
+                    }
+                    else
+                    {
+                        isSuc = false;
+                    }
                 }
                 else
                 {
-                    isSuc = false;
+                    var content = _db.Contents
+                        .Where(x => x.Title == inputText
+                                    || x.ContentKeyword.Contains(inputText))
+                        .OrderByDescending(x => x.HotLevel)
+                        .FirstOrDefault();
+
+                    if (content != null)
+                    {
+                        var msgLog = new MessageLog
+                        {
+                            UserId = userID,
+                            ContentId = content.Id,
+                            KeyWord = inputText
+                        };
+                        _db.MessageLogs.Add(msgLog);
+                        _db.SaveChanges();
+
+                        card = new Card()
+                        {
+                            Type = "buttons",
+                            ThumbnailImageUrl = content.ImageUrl,
+                            ImageAspectRatio = "rectangle",
+                            ImageSize = "cover",
+                            ImageBackgroundColor = "#FFFFFF",
+                            Title = content.Title,
+                            Text = content.Message,
+                            Actions = new List<ButtonAction>
+                            {
+                                new ButtonAction
+                                {
+                                    Type = "uri",
+                                    Label = "前往",
+                                    Uri = content.Url
+                                },
+                                new ButtonAction
+                                {
+                                    Type = "text",
+                                    Label = "下一則",
+                                    Data = "next"
+                                }
+                            }
+                        };
+                        SendPushMessage(Card(userID, card));
+                    }
+                    else
+                    {
+                        isSuc = false;
+                    }
+
                 }
-                
-            }
 
-            if(isSuc == false)
-            {
-
-            }
-
-            //if (data.Postback != null)// Is Postback
-            //{
-            //    SendPushMessage("PostBackData:" + data.Postback.Data, data.Source.UserId);
-            //}
-            //if (data.Message.Text == "旋轉")
-            //{
-            //    SendPushMessage(data.Message.Text, data.Source.UserId);
-            //}
-            //else if (data.Message.Text == "卡片")
-            //{
-            //    SendPushMessage(data.Message.Text, data.Source.UserId);
-            //}
-            //else if (data.Message.Text == "f")
-            //{
-            //    SendReplyCardMessage(data.ReplyToken);
-            //}
-            //else
-            //{
-            //    SendReplyMessage(data.Message.Text, data.ReplyToken);
-            //}
-            return Ok();
-        }
-
-        private void SendReplyMessage(string text, string token)
-        {
-            var request = new RequestReplyMessage
-            {
-                ReplyToken = token,
-                Messages = new List<TextMessage>
+                if (isSuc == false)
                 {
-                        new TextMessage {Text = text, Type = "text"}
+                    //todo
+                    SendPushMessage(GetFlexMenu(userID));
                 }
-
-            };
-            //HttpClient Post
-            var client = new HttpClient();
-            // Request head
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", ChannelAccessToken);
-            var uri = "https://api.line.me/v2/bot/message/reply";
-            HttpResponseMessage httpResponseMessage;
-            // Request body
-            byte[] byteData = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(request));
-
-            //var response = new WebApiMemberRegisterRespone();
-
-            using (var content = new ByteArrayContent(byteData))
-            {
-                content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-                httpResponseMessage = client.PostAsync(uri, content).Result;
-                string result = httpResponseMessage.Content.ReadAsStringAsync().Result;
-                //response = JsonConvert.DeserializeObject<WebApiMemberRegisterRespone>(result);
             }
+            return Ok();
         }
 
         private void SendReplyCardMessage(string token)
@@ -266,43 +227,8 @@ namespace LineBot.Controllers
             }
         }
 
-        private void SendPushMessage(string text, string to)
-        {
-            object request = null;
-            switch (text)
-            {
-                case "卡片":
-                    //request = Card(to);
-                    break;
-                case "旋轉":
-                    request = Carousel(to);
-                    break;
-                default:
-                    request = Text(to, text);
-                    break;
-            }
 
-            //HttpClient Post
-            var client = new HttpClient();
-            // Request head
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", ChannelAccessToken);
-            var uri = "https://api.line.me/v2/bot/message/push";
-            HttpResponseMessage httpResponseMessage;
-            // Request body
-            var aa = JsonConvert.SerializeObject(request);
-            //byte[] byteData = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(request));
-            byte[] byteData = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(request));
 
-            //var response = new WebApiMemberRegisterRespone();
-
-            using (var content = new ByteArrayContent(byteData))
-            {
-                content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-                httpResponseMessage = client.PostAsync(uri, content).Result;
-                string result = httpResponseMessage.Content.ReadAsStringAsync().Result;
-                //response = JsonConvert.DeserializeObject<WebApiMemberRegisterRespone>(result);
-            }
-        }
 
         private object Text(string to, string text)
         {
@@ -426,10 +352,106 @@ namespace LineBot.Controllers
             return request;
         }
 
+        private object GetFlexMenu(string to)
+        {
+            return new 
+            {
+                To = to,
+                Messages = new List<dynamic>
+                        {
+                            new
+                            {
+                                type = "flex",
+                                altText = "this is a flex message",
+                                contents = new
+                                {
+                                        type = "carousel",
+                                        contents = new List <dynamic>
+                                        {
+                                            new
+                                            {
+                                                type = "bubble",
+                                                body = new
+                                                {
+                                                    type="box",
+                                                    layout = "vertical",
+                                                    spacing = "sm",
+                                                    contents = new List<dynamic>
+                                                    {
+                                                        new
+                                                        {
+                                                            type = "box",
+                                                            layout = "horizontal",
+                                                            spacing = "sm",
+                                                            contents = new List<dynamic>
+                                                            {
+                                                                new
+                                                                {
+                                                                    type = "button",
+                                                                    style = "primary",
+                                                                    action = new
+                                                                    {
+                                                                        type = "message",
+                                                                        label = "多冰",
+                                                                        text = "多冰"
+                                                                    }
+                                                                },
+                                                            }
+                                                        },
+                                                         new
+                                                        {
+                                                            type = "box",
+                                                            layout = "horizontal",
+                                                            spacing = "sm",
+                                                            contents = new List<dynamic>
+                                                            {
+                                                                new
+                                                                {
+                                                                    type = "button",
+                                                                    style = "primary",
+                                                                    action = new
+                                                                    {
+                                                                        type = "message",
+                                                                        label = "去冰",
+                                                                        text = "去冰"
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                }
+                            }
+                        }
 
+        };
+        }
+
+        private void SendPushMessage(object request)
+        {
+            //HttpClient Post
+            var client = new HttpClient();
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", ChannelAccessToken);
+            var uri = "https://api.line.me/v2/bot/message/push";
+            HttpResponseMessage httpResponseMessage;
+            // Request body
+            byte[] byteData = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(request));
+            using (var content = new ByteArrayContent(byteData))
+            {
+                content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+                httpResponseMessage = client.PostAsync(uri, content).Result;
+                string result = httpResponseMessage.Content.ReadAsStringAsync().Result;
+                //Console.WriteLine(result);
+                //response = JsonConvert.DeserializeObject<WebApiMemberRegisterRespone>(result);
+            }
+        }
 
 
     }
+
+
 
     public class RequestReplyMessage
     {

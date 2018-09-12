@@ -811,6 +811,11 @@ namespace LineBot.Models
         public System.DateTime SendDatetime { get; set; } // SendDatetime
         public string UserId { get; set; } // UserID
         public string KeyWord { get; set; } // KeyWord (length: 50)
+
+        public MessageLog()
+        {
+            SendDatetime = System.DateTime.Now;
+        }
     }
 
     // database_firewall_rules
