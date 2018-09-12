@@ -1,6 +1,6 @@
 # LineBot
 
-                 ![image](https://github.com/ZeroTiem/LineBot/blob/master/%E5%A5%BD%E8%81%8A.png)
+![image](https://github.com/ZeroTiem/LineBot/blob/master/%E5%A5%BD%E8%81%8A.png)
 
 發想緣由 :
 
