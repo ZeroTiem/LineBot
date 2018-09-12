@@ -58,6 +58,13 @@ namespace LineBot.Controllers
                     .OrderByDescending(x => x.HotLevel)
                     .FirstOrDefault();
 
+                if(nextContent == null)
+                {
+                    var text = Text(userID, "你過度邊緣了\uDBC0\uDC840x100086");
+                    SendPushMessage(text);
+                    return Ok();
+                }
+
                 if (msgLog.MappingId == null)
                 {
                     var nextMsgLog = new MessageLog()
@@ -133,6 +140,7 @@ namespace LineBot.Controllers
                     };
                 }
                 SendPushMessage(Card(userID, card));
+                return Ok();
             }
 
             if (cat != null)
@@ -243,7 +251,6 @@ namespace LineBot.Controllers
                     }
 
                 }
-
                 if (isSuc == false)
                 {
                     //todo
