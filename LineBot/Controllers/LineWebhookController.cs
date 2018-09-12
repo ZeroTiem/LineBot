@@ -41,6 +41,47 @@ namespace LineBot.Controllers
 
             var cat = _db.Categories.FirstOrDefault(x => x.Title == inputText);
 
+            if(inputText == "熱門話題")
+            {
+                var contents = _db.Contents
+                    .Where(x => x.HotLevel > 3000)
+                    .OrderByDescending(x => x.HotLevel)
+                    .ToList();
+
+                var num = (new Random()).Next(0, 10);
+                var content = contents.Skip(num).FirstOrDefault();
+
+                card = new Card()
+                {
+                    Type = "buttons",
+                    ThumbnailImageUrl = content.ImageUrl,
+                    ImageAspectRatio = "rectangle",
+                    ImageSize = "cover",
+                    ImageBackgroundColor = "#FFFFFF",
+                    Title = content.Title,
+                    Text = content.Message.Substring(0, 60),
+                    Actions = new List<ButtonAction>
+                            {
+                                new ButtonAction
+                                {
+                                    Type = "uri",
+                                    Label = "前往",
+                                    Uri = content.Url
+                                },
+                                new ButtonAction
+                                {
+                                    Type = "text",
+                                    Label = "下一則",
+                                    Data = "next"
+                                }
+                            }
+                };
+                SendPushMessage(Card(userID, card));
+                return Ok();
+            }
+
+            if(inputText == "")
+
             if (inputText == "下一則")
             {
                 var msgLog = _db.MessageLogs
@@ -58,7 +99,7 @@ namespace LineBot.Controllers
                     .OrderByDescending(x => x.HotLevel)
                     .FirstOrDefault();
 
-                if(nextContent == null)
+                if (nextContent == null)
                 {
                     var text = Text(userID, "你過度邊緣了\uDBC0\uDC840x100086");
                     SendPushMessage(text);
@@ -84,7 +125,7 @@ namespace LineBot.Controllers
                         ImageSize = "cover",
                         ImageBackgroundColor = "#FFFFFF",
                         Title = nextContent.Title,
-                        Text = nextContent.Message,
+                        Text = nextContent.Message.Substring(0, 60),
                         Actions = new List<ButtonAction>
                             {
                                 new ButtonAction
@@ -121,7 +162,7 @@ namespace LineBot.Controllers
                         ImageSize = "cover",
                         ImageBackgroundColor = "#FFFFFF",
                         Title = nextContent.Title,
-                        Text = nextContent.Message.Substring(0,59),
+                        Text = nextContent.Message.Substring(0, 60),
                         Actions = new List<ButtonAction>
                             {
                                 new ButtonAction
@@ -144,39 +185,39 @@ namespace LineBot.Controllers
             }
 
             if (cat != null)
+            {
+                var contentData = (from m in _db.CatContentMappings.Where(x => x.CategoryId == cat.Id)
+                                   join c in _db.Contents
+                                   on m.ContentId equals c.Id
+                                   orderby c.HotLevel descending
+                                   select new
+                                   {
+                                       Content = c,
+                                       MappingID = m.Id
+                                   })
+                              .FirstOrDefault();
+                if (contentData != null)
                 {
-                    var contentData = (from m in _db.CatContentMappings.Where(x => x.CategoryId == cat.Id)
-                                       join c in _db.Contents
-                                       on m.ContentId equals c.Id
-                                       orderby c.HotLevel descending
-                                       select new
-                                       {
-                                           Content = c,
-                                           MappingID = m.Id
-                                       })
-                                  .FirstOrDefault();
-                    if (contentData != null)
+                    var msgLog = new MessageLog
                     {
-                        var msgLog = new MessageLog
-                        {
-                            UserId = userID,
-                            MappingId = contentData.MappingID,
-                            KeyWord = inputText
-                        };
-                        _db.MessageLogs.Add(msgLog);
-                        _db.SaveChanges();
+                        UserId = userID,
+                        MappingId = contentData.MappingID,
+                        KeyWord = inputText
+                    };
+                    _db.MessageLogs.Add(msgLog);
+                    _db.SaveChanges();
 
-                        var content = contentData.Content;
-                        card = new Card()
-                        {
-                            Type = "buttons",
-                            ThumbnailImageUrl = content.ImageUrl,
-                            ImageAspectRatio = "rectangle",
-                            ImageSize = "cover",
-                            ImageBackgroundColor = "#FFFFFF",
-                            Title = content.Title,
-                            Text = content.Message.Substring(0, 59),
-                            Actions = new List<ButtonAction>
+                    var content = contentData.Content;
+                    card = new Card()
+                    {
+                        Type = "buttons",
+                        ThumbnailImageUrl = content.ImageUrl,
+                        ImageAspectRatio = "rectangle",
+                        ImageSize = "cover",
+                        ImageBackgroundColor = "#FFFFFF",
+                        Title = content.Title,
+                        Text = content.Message.Substring(0, 60),
+                        Actions = new List<ButtonAction>
                             {
                                 new ButtonAction
                                 {
@@ -191,43 +232,43 @@ namespace LineBot.Controllers
                                     Text = "下一則"
                                 }
                             }
-                        };
-                        SendPushMessage(Card(userID, card));
-                    }
-                    else
-                    {
-                        isSuc = false;
-                    }
+                    };
+                    SendPushMessage(Card(userID, card));
                 }
                 else
                 {
-                    var content = _db.Contents
-                        .Where(x => x.Title == inputText
-                                    || x.ContentKeyword.Contains(inputText))
-                        .OrderByDescending(x => x.HotLevel)
-                        .FirstOrDefault();
+                    isSuc = false;
+                }
+            }
+            else
+            {
+                var content = _db.Contents
+                    .Where(x => x.Title == inputText
+                                || x.ContentKeyword.Contains(inputText))
+                    .OrderByDescending(x => x.HotLevel)
+                    .FirstOrDefault();
 
-                    if (content != null)
+                if (content != null)
+                {
+                    var msgLog = new MessageLog
                     {
-                        var msgLog = new MessageLog
-                        {
-                            UserId = userID,
-                            ContentId = content.Id,
-                            KeyWord = inputText
-                        };
-                        _db.MessageLogs.Add(msgLog);
-                        _db.SaveChanges();
+                        UserId = userID,
+                        ContentId = content.Id,
+                        KeyWord = inputText
+                    };
+                    _db.MessageLogs.Add(msgLog);
+                    _db.SaveChanges();
 
-                        card = new Card()
-                        {
-                            Type = "buttons",
-                            ThumbnailImageUrl = content.ImageUrl,
-                            ImageAspectRatio = "rectangle",
-                            ImageSize = "cover",
-                            ImageBackgroundColor = "#FFFFFF",
-                            Title = content.Title,
-                            Text = content.Message.Substring(0, 59),
-                            Actions = new List<ButtonAction>
+                    card = new Card()
+                    {
+                        Type = "buttons",
+                        ThumbnailImageUrl = content.ImageUrl,
+                        ImageAspectRatio = "rectangle",
+                        ImageSize = "cover",
+                        ImageBackgroundColor = "#FFFFFF",
+                        Title = content.Title,
+                        Text = content.Message.Substring(0, 60),
+                        Actions = new List<ButtonAction>
                             {
                                 new ButtonAction
                                 {
@@ -242,20 +283,20 @@ namespace LineBot.Controllers
                                     Text = "下一則"
                                 }
                             }
-                        };
-                        SendPushMessage(Card(userID, card));
-                    }
-                    else
-                    {
-                        isSuc = false;
-                    }
-
+                    };
+                    SendPushMessage(Card(userID, card));
                 }
-                if (isSuc == false)
+                else
                 {
-                    //todo
-                    SendPushMessage(GetFlexMenu(userID));
+                    isSuc = false;
                 }
+
+            }
+            if (isSuc == false)
+            {
+                //todo
+                SendPushMessage(GetFlexMenu(userID));
+            }
             return Ok();
         }
 
