@@ -122,15 +122,36 @@ namespace LineBot.Controllers
                     .OrderByDescending(x => x.SendDatetime)
                     .FirstOrDefault();
 
-                var contentID = msgLog.MappingId == null
-                    ? msgLog.ContentId
-                    : _db.CatContentMappings.FirstOrDefault(x => x.Id == msgLog.MappingId).ContentId;
+                Content preContent = default(Content);
+                CatContentMapping preMap = default(CatContentMapping);
 
-                var preContnet = _db.Contents.FirstOrDefault(x => x.Id == contentID);
-                var nextContent = _db.Contents
-                    .Where(x => x.HotLevel < preContnet.HotLevel)
-                    .OrderByDescending(x => x.HotLevel)
-                    .FirstOrDefault();
+                if(msgLog.MappingId == null)
+                {
+                    preContent = _db.Contents.FirstOrDefault(x => x.Id == msgLog.ContentId);
+                    preMap = _db.CatContentMappings.FirstOrDefault(x => x.ContentId == preContent.Id);
+                }
+                else
+                {
+                    preMap = _db.CatContentMappings.FirstOrDefault(x => x.Id == msgLog.MappingId);
+                    preContent = _db.Contents.FirstOrDefault(x => x.Id == preMap.ContentId);
+                }
+                //var contentID = msgLog.MappingId == null
+                //    ? msgLog.ContentId
+                //    : _db.CatContentMappings.FirstOrDefault(x => x.Id == msgLog.MappingId).ContentId;
+
+                //var preContent = _db.Contents.FirstOrDefault(x => x.Id == contentID);
+
+                //var nextContent = _db.Contents
+                //    .Where(x => x.HotLevel < preContent.HotLevel)
+                //    .OrderByDescending(x => x.HotLevel)
+                //    .FirstOrDefault();
+                var nextContent = _db.CatContentMappings
+                    .Where(x => x.CategoryId == preMap.CategoryId)
+                    .Join(_db.Contents,
+                        m => m.ContentId,
+                        c => c.Id,
+                        (m, c) => c)
+                    .FirstOrDefault(x => x.HotLevel < preContent.HotLevel);
 
                 if (nextContent == null)
                 {
