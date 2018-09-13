@@ -155,7 +155,7 @@ namespace LineBot.Controllers
 
                 if (nextContent == null)
                 {
-                    var text = Text(userID, "你過度邊緣了\uDBC0\uDC840x100086");
+                    var text = Text(userID, "你過度邊緣了\uDBC0\uDC84");
                     SendPushMessage(text);
                     return Ok();
                 }
