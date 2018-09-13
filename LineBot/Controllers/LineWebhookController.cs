@@ -153,6 +153,8 @@ namespace LineBot.Controllers
                         (m, c) => c)
                     .FirstOrDefault(x => x.HotLevel < preContent.HotLevel);
 
+                
+
                 if (nextContent == null)
                 {
                     var text = Text(userID, "你過度邊緣了\uDBC0\uDC84");
@@ -199,10 +201,14 @@ namespace LineBot.Controllers
                 }
                 else
                 {
+                    var nextMap = _db.CatContentMappings
+                    .FirstOrDefault(x => x.CategoryId == preMap.CategoryId
+                                         && x.ContentId == nextContent.Id);
+
                     var nextMsgLog = new MessageLog()
                     {
                         UserId = userID,
-                        MappingId = nextContent.Id,
+                        MappingId = nextMap.Id,
                         KeyWord = msgLog.KeyWord
                     };
                     _db.MessageLogs.Add(nextMsgLog);
